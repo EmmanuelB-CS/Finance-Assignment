@@ -35,7 +35,7 @@ if user_choice == 'yes':
     
     # Append the risk-free asset line to the DataFrame
     stocks_data = stocks_data._append(rf_line_to_add, ignore_index=True)
-    selected_stocks = selected_stocks.append("RISK FREE ASSET")
+    selected_stocks.append("RISK FREE ASSET")
     monthly_returns["RISK FREE ASSET"] = 0.003
 
 
