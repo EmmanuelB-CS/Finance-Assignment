@@ -100,7 +100,7 @@ def optimize_portfolio(returns, cov_matrix, target_returns):
         fun_to_minimize = lambda x: annual_portfolio_stddev(x, cov_matrix)
 
         # Define bounds
-        bounds = [(0, 1) for _ in range(len(selected_stocks))]  # Weights should be between 0 and 1
+        bounds = [(-1, 1) for _ in range(len(selected_stocks))]  # Weights should be between -1 and 1 (in order to allow short sales) --> this allow to the program to find an optimal solution
 
         optimized_portfolio = minimize(fun_to_minimize, initial_weights, method='SLSQP', constraints=constraints, bounds=bounds)
         if optimized_portfolio.success:
