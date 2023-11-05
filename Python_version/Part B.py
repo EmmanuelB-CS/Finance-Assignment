@@ -27,8 +27,22 @@ sheet_name = 'Stocks'
 
 stocks_data = pd.read_excel(excel_file_path, sheet_name=sheet_name)
 
-returns = stocks_data[['Average Monthly Returns', 'Standard Deviation (Monthly)']] # Here, by using the append method I shall add the line of the risk free return
+# I ask to the user whether or not he wants to consider a risk-free asset
+user_choice = input("Do you want to add a risk-free asset ()? (yes/no): ").strip().lower()
+if user_choice == 'yes':
+    # Define the risk-free asset data
+    rf_line_to_add = {'Stocks': 'Risk free', 
+                     'Average Monthly Returns': 0.003, 
+                     'Standard Deviation (Monthly)': 0.0,
+                     'Annual Average Returns': 0.036, 
+                     'Annual Standard Deviation': 0.0}
+    
+    # Append the risk-free asset line to the DataFrame
+    stocks_data = stocks_data._append(rf_line_to_add, ignore_index=True)
 
+
+returns = stocks_data[['Average Monthly Returns', 'Standard Deviation (Monthly)']] # Here, by using the append method I shall add the line of the risk free return
+print(stocks_data)
 
 # In this part of the code: I implement two functions that will compute both of the most 
 # important values we need, the annual portfolio return and the annual porfolio stdv; they 
@@ -59,7 +73,7 @@ def annual_portfolio_stddev(weights, cov_matrix):
     :return: The standard deviation of the portfolio.
     """
     if len(weights) != cov_matrix.shape[0]:
-        raise ValueError("Le nombre de poids doit correspondre au nombre d'actifs dans la matrice de covariance.")
+        raise ValueError("The number of weights must match the number of assets in the covariance matrix")
 
     portfolio_variance = np.dot(weights, np.dot(cov_matrix, weights)) # equivalent of the following operation: XtAX (with X an array and A a square matrix)
     portfolio_stddev = np.sqrt(portfolio_variance)
@@ -100,7 +114,7 @@ def optimize_portfolio(returns, cov_matrix, target_returns):
         fun_to_minimize = lambda x: annual_portfolio_stddev(x, cov_matrix)
 
         # Define bounds
-        bounds = [(-1, 1) for _ in range(len(selected_stocks))]  # Weights should be between -1 and 1 (in order to allow short sales) --> this allow to the program to find an optimal solution
+        bounds = [(-1, 1) for _ in range(len(selected_stocks))]  # Weights should be between 0 and 1
 
         optimized_portfolio = minimize(fun_to_minimize, initial_weights, method='SLSQP', constraints=constraints, bounds=bounds)
         if optimized_portfolio.success:
