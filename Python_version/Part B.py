@@ -6,7 +6,6 @@ from scipy.optimize import minimize
 # In this part of the code: I load the data from EURO STOXX Excel to compute the covariance 
 # Matrix used in the computation of the portfolio standard deviation
 ###########################################################################################
-
 excel_data_path = r"C:\Users\User\Desktop\Finance assignment\Python_version\EURO STOXX 50 Price + Index Data.xlsx"
 df = pd.read_excel(excel_data_path, sheet_name='Price Data', index_col=0)
 
@@ -15,8 +14,7 @@ selected_stocks = ["ADIDAS (XET)", "ENEL", "KONINKLIJKE AHOLD DELHAIZE", "BBV.AR
                        "BASF (XET)", "BAYER (XET)"]
 
 selected_df = df[selected_stocks]
-monthly_returns = selected_df.pct_change().dropna()
-cov_matrix = monthly_returns.cov() # Computes the covariance matrix that will be used in the "optimization" function
+monthly_returns = selected_df.pct_change().dropna() # See part A
 
 
 # In this part of the code: I load the file I generated in part A in order to get the returns
@@ -33,16 +31,17 @@ if user_choice == 'yes':
     # Define the risk-free asset data
     rf_line_to_add = {'Stocks': 'Risk free', 
                      'Average Monthly Returns': 0.003, 
-                     'Standard Deviation (Monthly)': 0.0,
-                     'Annual Average Returns': 0.036, 
-                     'Annual Standard Deviation': 0.0}
+                     'Standard Deviation (Monthly)': 0.0}
     
     # Append the risk-free asset line to the DataFrame
     stocks_data = stocks_data._append(rf_line_to_add, ignore_index=True)
+    selected_stocks = selected_stocks.append("RISK FREE ASSET")
+    monthly_returns["RISK FREE ASSET"] = 0.003
 
+
+cov_matrix = monthly_returns.cov() # Computes the covariance matrix that will be used in the "optimization" function
 
 returns = stocks_data[['Average Monthly Returns', 'Standard Deviation (Monthly)']] # Here, by using the append method I shall add the line of the risk free return
-print(stocks_data)
 
 # In this part of the code: I implement two functions that will compute both of the most 
 # important values we need, the annual portfolio return and the annual porfolio stdv; they 
@@ -108,13 +107,13 @@ def optimize_portfolio(returns, cov_matrix, target_returns):
         constraints = [{'type': 'eq', 'fun': lambda x: np.sum(x) - 1}]
         constraints += [{'type': 'ineq', 'fun': lambda x: annual_portfolio_return(x, returns) - target_return}]
 
-        initial_weights = [1 / len(selected_stocks)] * len(selected_stocks)  # Initial equal weights
+        initial_weights = [1 / len(returns)] * len(returns)  # Initial equal weights
 
         # Function to minimize
         fun_to_minimize = lambda x: annual_portfolio_stddev(x, cov_matrix)
 
         # Define bounds
-        bounds = [(-1, 1) for _ in range(len(selected_stocks))]  # Weights should be between 0 and 1
+        bounds = [(-1, 1) for _ in range(len(returns))]  # Weights should be between 0 and 1
 
         optimized_portfolio = minimize(fun_to_minimize, initial_weights, method='SLSQP', constraints=constraints, bounds=bounds)
         if optimized_portfolio.success:
