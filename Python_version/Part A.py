@@ -73,9 +73,9 @@ portfolio_results = {
 stocks_df = pd.DataFrame(results)
 portfolio_df = pd.DataFrame(portfolio_results)
 
-print("Rendements des actions sélectionnées :")
+print("Return of selected stocks :")
 print(stocks_df)
-print("\nRendements du portefeuille équilibré :")
+print("\nReturn of the equally weighed portfolio :")
 print(portfolio_df)
 
 
