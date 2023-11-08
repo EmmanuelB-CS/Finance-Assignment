@@ -26,20 +26,23 @@ sheet_name = 'Stocks'
 stocks_data = pd.read_excel(excel_file_path, sheet_name=sheet_name)
 
 # I ask to the user whether or not he wants to consider a risk-free asset
-user_choice = input("Do you want to add a risk-free asset ()? (yes/no): ").strip().lower()
+risk_free_monthly_return = 0.003
+user_choice = input(f"Do you want to add a risk-free asset with {risk_free_monthly_return:.2%} of return? (yes/no): ").strip().lower()
 if user_choice == 'yes':
     # Define the risk-free asset data
     rf_line_to_add = {'Stocks': 'Risk free', 
-                     'Average Monthly Returns': 0.003, 
+                     'Average Monthly Returns': risk_free_monthly_return, # I set the return to 30% to test the relevance of the program, the results seem consistent
                      'Standard Deviation (Monthly)': 0.0}
     
     # Append the risk-free asset line to the DataFrame
     stocks_data = stocks_data._append(rf_line_to_add, ignore_index=True)
     selected_stocks.append("RISK FREE ASSET")
-    monthly_returns["RISK FREE ASSET"] = 0.003
-
+    monthly_returns["RISK FREE ASSET"] = risk_free_monthly_return
+    print(selected_stocks)
 
 cov_matrix = monthly_returns.cov() # Computes the covariance matrix that will be used in the "optimization" function
+# The new covariance is 13*13 (the rf added) but the computation of portfolio sttdev because the terms 
+# invoking the rf are all equal to 0 (no correlation + no variance) in the way we artificially added this rf
 
 returns = stocks_data[['Average Monthly Returns', 'Standard Deviation (Monthly)']] # Here, by using the append method I shall add the line of the risk free return
 
@@ -93,6 +96,8 @@ def optimize_portfolio(returns, cov_matrix, target_returns):
     while satisfying constraints on the target returns. The optimization is performed using the SciPy library's minimize
     function (so here can be the source of different results compared to the solver's version on Excel).
 
+    NOTE: I did not set an equality constraint on the return (I deemed better to check if we can get a better return with a lower risk)
+
     :param returns: DataFrame with asset returns, including the 'Average Monthly Returns' column.
     :param cov_matrix: Covariance matrix of asset returns.
     :param target_returns: List of target annual returns to be achieved by the portfolio.
@@ -105,7 +110,7 @@ def optimize_portfolio(returns, cov_matrix, target_returns):
     for target_return in target_returns:
         # Define optimization constraints for this target return
         constraints = [{'type': 'eq', 'fun': lambda x: np.sum(x) - 1}]
-        constraints += [{'type': 'ineq', 'fun': lambda x: annual_portfolio_return(x, returns) - target_return}]
+        #constraints += [{'type': 'ineq', 'fun': lambda x: annual_portfolio_return(x, returns) - target_return}] 
 
         initial_weights = [1 / len(returns)] * len(returns)  # Initial equal weights
 
@@ -120,6 +125,8 @@ def optimize_portfolio(returns, cov_matrix, target_returns):
             weights = optimized_portfolio.x
             return_, std = annual_portfolio_return(weights, returns), optimized_portfolio.fun
             results.append({'Target Return': target_return, 'Portfolio Weight': weights, 'Average Return': return_, 'Standard Deviation': std})
+        else:
+            print("No solution could be found")
 
     return results
 
@@ -127,7 +134,7 @@ def optimize_portfolio(returns, cov_matrix, target_returns):
 
 #######################################################################################
 # Define target returns right here (please first read how np.arange works in the documentation)
-target_returns = np.arange(0.10, 0.51, 0.10)  # 10% increments
+target_returns = np.arange(0.10, 0.41, 0.10)  # 10% increments
 
 # Call the function to optimize the portfolio
 results = optimize_portfolio(returns, cov_matrix, target_returns)
@@ -139,27 +146,29 @@ for result in results:
                                            result['Average Return'],
                                            result['Standard Deviation']))
 
-excel_writer = pd.ExcelWriter(r"C:\Users\User\Desktop\Finance assignment\csv_from_python_code\optimized_portfolios.xlsx", engine='xlsxwriter')
+def generate_excel_file(results):
+    excel_writer = pd.ExcelWriter(r"C:\Users\User\Desktop\Finance assignment\csv_from_python_code\optimized_portfolios.xlsx", engine='xlsxwriter')
 
-all_portfolios_df = pd.DataFrame()
+    all_portfolios_df = pd.DataFrame()
 
-for result in results:
-    portfolio_df = pd.DataFrame({'Stocks': selected_stocks,
-                                 'Portfolio Weight': result['Portfolio Weight'],
-                                 'Average Return': result['Average Return'],
-                                 'Standard Deviation': result['Standard Deviation'],
-                                 'Target Return': result['Target Return']})
-    
-    current_target_return = result['Target Return']
-    
-    formatted_target_return = f"{current_target_return:.4%}"  # Format as percentage with 4 decimal places
+    for result in results:
+        portfolio_df = pd.DataFrame({'Stocks': selected_stocks,
+                                    'Portfolio Weight': result['Portfolio Weight'],
+                                    'Average Return': result['Average Return'],
+                                    'Standard Deviation': result['Standard Deviation'],
+                                    'Target Return': result['Target Return']})
+        
+        current_target_return = result['Target Return']
+        
+        formatted_target_return = f"{current_target_return:.4%}"  # Format as percentage with 4 decimal places
 
-    portfolio_df.to_excel(excel_writer, sheet_name=f'Target_Return_{formatted_target_return}', index=False)
-    
-    # Append the current portfolio DataFrame to the all_portfolios_df
-    all_portfolios_df = pd.concat([all_portfolios_df, portfolio_df], ignore_index=True)
+        portfolio_df.to_excel(excel_writer, sheet_name=f'Target_Return_{formatted_target_return}', index=False)
+        
+        # Append the current portfolio DataFrame to the all_portfolios_df
+        all_portfolios_df = pd.concat([all_portfolios_df, portfolio_df], ignore_index=True)
 
-all_portfolios_df.to_excel(excel_writer, sheet_name='All Portfolios', index=False)
+    all_portfolios_df.to_excel(excel_writer, sheet_name='All Portfolios', index=False)
 
-excel_writer._save()
+    excel_writer._save()
 
+generate_excel_file(results)
